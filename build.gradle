@@ -39,3 +39,13 @@ allprojects {
         maven { url 'https://www.jitpack.io' }
     }
 }
+
+allprojects {
+    configurations.all {
+        resolutionStrategy.eachDependency { details ->
+            if (details.requested.group == 'org.jetbrains.kotlin') {
+                details.useVersion '1.9.25'
+            }
+        }
+    }
+}
