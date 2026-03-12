@@ -1,4 +1,4 @@
-package com.yasirjalal.BuildForge
+package PKG_NAME_HERE
 
 import android.os.Build
 import android.os.Bundle

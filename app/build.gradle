@@ -86,9 +86,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.yasirjalal.BuildForge'
+    namespace 'PKG_NAME_HERE'
     defaultConfig {
-        applicationId 'com.yasirjalal.BuildForge'
+        applicationId 'PKG_NAME_HERE'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

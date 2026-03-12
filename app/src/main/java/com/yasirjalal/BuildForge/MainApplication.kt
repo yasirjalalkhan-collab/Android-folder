@@ -1,4 +1,4 @@
-package com.yasirjalal.BuildForge
+package PKG_NAME_HERE
 
 import android.app.Application
 import android.content.res.Configuration

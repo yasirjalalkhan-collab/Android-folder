@@ -21,7 +21,7 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
   }
 }
 
-rootProject.name = 'BuildForge'
+rootProject.name = 'APP_NAME_HERE'
 
 dependencyResolutionManagement {
   versionCatalogs {
