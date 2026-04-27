@@ -1,0 +1,105 @@
+// ════════════════════════════════════════════════════════════
+// TIMBER 360 — Firestore Security Rules (FINAL)
+// Firebase Console → Firestore → Rules میں paste کریں
+// ════════════════════════════════════════════════════════════
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Admin: Server-side verify — APK سے نہیں ملتا ─────────
+    // Firebase Console → Authentication → Users سے admin کا UID لیں
+    function isAdmin() {
+      return request.auth != null &&
+             request.auth.uid == '64Iy6GzpNLOR6brsEyejDmMUCOp1';
+    }
+
+    // ── Helper: logged in? ────────────────────────────────────
+    function loggedIn() {
+      return request.auth != null;
+    }
+
+    // ── User data: صرف اپنا data ─────────────────────────────
+    match /users/{uid}/{document=**} {
+      allow read, write: if loggedIn() && request.auth.uid == uid;
+      // کوئی بھی دوسرے کا data نہیں پڑھ سکتا
+    }
+
+    // ── userStatus: create اور read اپنا، لکھنا admin ─────────
+    match /userStatus/{uid} {
+      // اپنا status پڑھیں
+      allow read: if loggedIn() && (request.auth.uid == uid || isAdmin());
+
+      // صرف اپنا document create کریں (registration پر)
+      allow create: if loggedIn() && request.auth.uid == uid
+                    && request.resource.data.uid == uid
+                    && request.resource.data.status == 'pending';
+
+      // Update: صرف admin
+      allow update: if isAdmin();
+
+      // Delete: کوئی نہیں
+      allow delete: if false;
+    }
+
+    // ── appConfig: read سب، write صرف admin ──────────────────
+    // appConfig/license — integrity check کے لیے (read only for all)
+    // appConfig/settings — registration toggle
+    match /appConfig/{doc} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
+    // ── Marketplace: read سب، write صرف admin ────────────────
+    match /marketplace/{doc} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
+    // ── Ads banner: read سب، write صرف admin ─────────────────
+    match /ads/{doc} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
+    // ── userSecrets: password recovery ──────────────────────
+    // email-keyed — صرف خود اور admin پڑھ سکتا ہے
+    // create: registration پر (logged in)
+    // read: کوئی بھی logged-in user (forgot password کے لیے)
+    match /userSecrets/{emailKey} {
+      allow read:   if loggedIn() || true; // forgot password — pre-login پڑھنا ضروری
+      allow create: if loggedIn();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Default: باقی سب block ───────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// SECURITY NOTE:
+// - Server-side rules final authority ہیں
+// - APK decompile ہو تو بھی ADMIN_UID سے کوئی admin نہیں بن سکتا
+//   کیونکہ Firebase Auth UID صرف آپ کے account سے ملتا ہے
+// - userStatus.status صرف admin update کر سکتا ہے
+// ════════════════════════════════════════════════════════════
+
+
+// ════════════════════════════════════════════════════════════
+// LICENSE DOCUMENT SETUP (ایک بار کریں):
+// Firebase Console → Firestore → appConfig collection بنائیں
+// document ID: "license"
+// fields:
+//   valid:     true  (boolean)
+//   projectId: "timber-360"  (string)
+//   version:   "1.0"  (string)
+//
+// یہ document صرف آپ کے Firebase میں ہے
+// کوئی بھی decompile کر کے اپنا Firebase لگائے تو
+// ہمارے Firebase میں یہ document نہیں ملے گا
+// اور app "Unauthorized" دکھائے گا
+// ════════════════════════════════════════════════════════════

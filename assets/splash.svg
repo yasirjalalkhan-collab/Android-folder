@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1284" height="2778" viewBox="0 0 1284 2778">
+  <rect width="1284" height="2778" fill="#0f4c2a"/>
+  <!-- center circle -->
+  <circle cx="642" cy="1389" r="300" fill="#166534" opacity="0.4"/>
+  <!-- tree -->
+  <rect x="602" y="1480" width="80" height="130" rx="15" fill="#92400e"/>
+  <polygon points="642,1180 870,1500 414,1500" fill="#4ade80"/>
+  <polygon points="642,1240 820,1430 464,1430" fill="#22c55e"/>
+  <polygon points="642,1300 770,1380 514,1380" fill="#16a34a"/>
+  <!-- app name -->
+  <text x="642" y="1680" font-family="Arial" font-weight="900" font-size="80" fill="white" text-anchor="middle">Timber 360</text>
+  <text x="642" y="1730" font-family="Arial" font-size="36" fill="rgba(255,255,255,0.6)" text-anchor="middle">Business Manager</text>
+</svg>

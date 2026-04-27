@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Tracking — Timber 360</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background:#f8fafc; color:#1e293b; min-height:100vh; }
+  .container { max-width:480px; margin:0 auto; padding:16px; }
+  .header { background:linear-gradient(135deg,#166534,#15803d); color:#fff; padding:24px 20px; text-align:center; border-radius:16px; margin-bottom:16px; }
+  .header h1 { font-size:20px; font-weight:800; }
+  .header p  { font-size:12px; opacity:.8; margin-top:4px; }
+  .card { background:#fff; border-radius:16px; padding:20px; margin-bottom:12px; border:1px solid #e2e8f0; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+  .card h2 { font-size:14px; font-weight:700; color:#64748b; text-transform:uppercase; margin-bottom:12px; }
+  .status-big { display:flex; align-items:center; gap:12px; padding:16px; border-radius:12px; }
+  .status-big .icon { font-size:32px; }
+  .status-big .label { font-size:20px; font-weight:800; }
+  .status-big .sub   { font-size:13px; margin-top:2px; }
+  .timeline { position:relative; padding-right:24px; }
+  .tl-item { display:flex; gap:12px; margin-bottom:16px; position:relative; }
+  .tl-dot  { width:12px; height:12px; border-radius:6px; margin-top:4px; flex-shrink:0; }
+  .tl-line { position:absolute; right:5px; top:16px; bottom:-16px; width:2px; background:#e2e8f0; }
+  .tl-item:last-child .tl-line { display:none; }
+  .tl-eng  { font-weight:700; font-size:14px; }
+  .tl-note { font-size:12px; color:#64748b; margin-top:2px; }
+  .tl-time { font-size:11px; color:#94a3b8; margin-top:2px; }
+  .info-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:13px; }
+  .info-row:last-child { border:none; }
+  .info-row .key { color:#64748b; }
+  .info-row .val { font-weight:700; }
+  .expired-badge { background:#fef2f2; color:#991b1b; padding:16px; border-radius:12px; text-align:center; font-weight:700; }
+  .loading { text-align:center; padding:40px; color:#94a3b8; font-size:16px; }
+  .error   { text-align:center; padding:40px; color:#dc2626; }
+  .badge   { display:inline-block; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div id="app"><div class="loading">⏳ Loading...</div></div>
+</div>
+
+<script>
+const STATUS_META = {
+  pending:    { icon:'📥', eng:'Order Received',     ur:'آرڈر موصول',    color:'#475569', bg:'#f1f5f9' },
+  processing: { icon:'⚙️',  eng:'In Production',      ur:'کام جاری ہے',   color:'#d97706', bg:'#fffbeb' },
+  ready:      { icon:'✅', eng:'Ready',               ur:'تیار ہے',       color:'#0891b2', bg:'#ecfeff' },
+  dispatched: { icon:'🚚', eng:'Dispatched',          ur:'روانہ کر دیا',  color:'#7c3aed', bg:'#f5f3ff' },
+  delivered:  { icon:'🏠', eng:'Delivered',           ur:'پہنچ گیا',      color:'#16a34a', bg:'#f0fdf4' },
+  closed:     { icon:'🔒', eng:'Delivered & Closed',  ur:'مکمل',          color:'#166534', bg:'#dcfce7' },
+};
+
+function fmt(ts) {
+  try {
+    const d = new Date(parseInt(ts));
+    return d.toLocaleDateString('en-PK',{year:'numeric',month:'short',day:'numeric'});
+  } catch { return '—'; }
+}
+
+async function load() {
+  const id = new URLSearchParams(location.search).get('id');
+  if (!id) { document.getElementById('app').innerHTML = '<div class="error">❌ Invalid tracking link</div>'; return; }
+
+  // Firestore REST API — timber-360 project
+  const url = `https://firestore.googleapis.com/v1/projects/timber-360/databases/(default)/documents/tracking/${id}`;
+  try {
+    const res  = await fetch(url);
+    if (!res.ok) throw new Error('not found');
+    const json = await res.json();
+    const f    = json.fields;
+
+    const get = (key, type='stringValue') => f[key]?.[type] ?? f[key]?.integerValue ?? '';
+    const getArr = (key) => {
+      try { return (f[key]?.arrayValue?.values||[]).map(v => {
+        const m = v.mapValue?.fields;
+        return { status: m.status?.stringValue||'', note: m.note?.stringValue||'', time: m.time?.stringValue||'' };
+      }); } catch { return []; }
+    };
+
+    const status  = get('status');
+    const sm      = STATUS_META[status] || STATUS_META.pending;
+    const history = getArr('statusHistory');
+    const expAt   = get('expiresAt');
+    const isExp   = expAt && new Date(parseInt(expAt)) < new Date();
+
+    let html = `
+    <div class="header">
+      <h1>📦 Order Tracking</h1>
+      <p>${get('bizName') || 'Timber 360'}${get('bizPhone') ? ' • ' + get('bizPhone') : ''}</p>
+    </div>`;
+
+    if (isExp) {
+      html += `<div class="card"><div class="expired-badge">🔒 یہ آرڈر مکمل ہو چکا ہے اور tracking link غیر فعال ہو گئی ہے۔</div></div>`;
+    } else {
+      html += `
+      <div class="card">
+        <h2>Current Status</h2>
+        <div class="status-big" style="background:${sm.bg}">
+          <span class="icon">${sm.icon}</span>
+          <div>
+            <div class="label" style="color:${sm.color}">${sm.eng}</div>
+            <div class="sub" style="color:${sm.color};opacity:.8">${sm.ur}</div>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    html += `
+    <div class="card">
+      <h2>Order Info</h2>
+      <div class="info-row"><span class="key">Invoice #</span><span class="val">${get('invoiceId')}</span></div>
+      <div class="info-row"><span class="key">Customer</span><span class="val">${get('customerName')}</span></div>
+      <div class="info-row"><span class="key">Order Date</span><span class="val">${fmt(get('createdAt'))}</span></div>
+    </div>`;
+
+    if (history.length > 0) {
+      html += `<div class="card"><h2>Status History</h2><div class="timeline">`;
+      [...history].reverse().forEach((h, i) => {
+        const m = STATUS_META[h.status] || STATUS_META.pending;
+        html += `
+        <div class="tl-item">
+          <div>
+            <div class="tl-dot" style="background:${m.color}"></div>
+            <div class="tl-line"></div>
+          </div>
+          <div style="flex:1">
+            <div class="tl-eng" style="color:${m.color}">${m.icon} ${m.eng}</div>
+            ${h.note ? `<div class="tl-note">${h.note}</div>` : ''}
+            <div class="tl-time">${fmt(h.time)}</div>
+          </div>
+        </div>`;
+      });
+      html += `</div></div>`;
+    }
+
+    document.getElementById('app').innerHTML = html;
+  } catch(e) {
+    document.getElementById('app').innerHTML = `<div class="error">❌ Tracking info not found.<br><small>Invoice ID: ${id}</small></div>`;
+  }
+}
+
+load();
+</script>
+</body>
+</html>
